@@ -105,6 +105,51 @@ The scraper will:
 4. Store data in the SQLite database
 5. Detect and report price changes
 
+### VTInfo Vendors (NKS / Standard)
+
+The VTInfo scraper uses `VTINFO_USERNAME` and `VTINFO_PASSWORD` and shares the existing database and dashboard. The default retailer ID is `15786`. Direct runs load `.env` and `VT_info.env`; local Compose uses `VT_info.env`.
+
+```bash
+# Install the browser once if Playwright is not already set up
+playwright install chromium
+
+# Test a small NKS run
+python run_vtinfo_scraper.py --vendor nks --max-products 10
+
+# Scrape Standard Distributing
+python run_vtinfo_scraper.py --vendor standard
+
+# Run each vendor in its own local Docker container
+docker compose --profile scraper run --rm nks-scraper
+docker compose --profile scraper run --rm standard-scraper
+
+# Or use the PostgreSQL development stack
+docker compose -f docker-compose.dev.yml --profile scraper run --rm nks-scraper
+docker compose -f docker-compose.dev.yml --profile scraper run --rm standard-scraper
+```
+
+Use `--headed` to sign in manually or complete MFA in the browser. `--page-pause` adjusts the delay between product pages; a full catalog run may take a while. The web dashboard combines all three distributors and has a distributor filter. For Portainer, configure `VTINFO_USERNAME`, `VTINFO_PASSWORD`, and `VTINFO_RETAILER_ID` as stack environment variables.
+
+### Shared Database and SGProof Sync
+
+The local dashboard and scrapers use the existing `spider_dev` PostgreSQL database when `DATABASE_URL` is set in `.env` or the Compose environment. For the current Docker network, use `postgresql://spider:<existing-password>@postgres:5432/spider_dev`.
+
+The custom `spider-sgproof-scraper` image uses the shared `Database` adapter and writes new SGProof products, prices, and deals directly to the dashboard tables. The legacy `raghav0401/sgproof-scraper` image still writes its original tables; PostgreSQL triggers mirror those writes until the Portainer stack is redeployed with the custom image. The sync command is only needed for backfill or recovery:
+
+```bash
+docker exec spider-web python /app/migrate_sqlite_to_postgres.py --sgproof-only
+```
+
+The SGProof Portainer service uses `WEBSITE_USERNAME` and `WEBSITE_PASSWORD`. Update the password in that stack's environment and redeploy the `sgproof-scraper` service; restarting the existing container alone does not update its environment.
+
+After the Jenkins pipeline publishes `spider-sgproof-scraper:latest`, use that image for the Portainer SGProof service to enable direct shared-table writes.
+
+### Unified Portainer Stack
+
+Use `docker-compose.portainer.yml` as the single `spider` stack. It reuses the existing Postgres 15 volume `spider_spider-postgres-data` and the `spider_dev` database. Preserve the current `POSTGRES_PASSWORD` when updating the stack; changing it in Compose does not rotate the password stored in the existing database volume.
+
+Configure `WEBSITE_USERNAME`/`WEBSITE_PASSWORD` for Breakthru, `VTINFO_USERNAME`/`VTINFO_PASSWORD` for VTInfo, and `SGPROOF_USERNAME`/`SGPROOF_PASSWORD` for SGProof as Portainer stack environment variables. Build and push the SGProof image before deploying the stack. Scrapers are in the `scrapers` profile because each is a one-shot, potentially long-running job; the web and database services run with the stack by default.
+
 ### Running the Web Application
 
 **Local**:

@@ -103,6 +103,7 @@ def main():
             product_id = db.insert_product(
                 name=product_data['name'],
                 url=product_data.get('url'),
+                source='Breakthru Beverage',
                 product_id=product_data.get('product_id'),
                 bottle_upc=product_data.get('bottle_upc'),
                 case_upc=product_data.get('case_upc'),

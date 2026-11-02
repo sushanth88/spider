@@ -35,6 +35,20 @@
     </div>
 </div>
 
+{% if stats and stats.by_source %}
+<div class="card">
+    <h2>Products by Distributor</h2>
+    <div class="stats">
+        {% for source in stats.by_source %}
+        <div class="stat-box">
+            <h3>{{ source.source }}</h3>
+            <div class="value">{{ source.count }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Products by Spirit Type -->
 {% if stats and stats.by_spirit_type %}
 <div class="card">

@@ -146,6 +146,7 @@ class Database:
                     container_type TEXT,
                     brand TEXT,
                     supplier TEXT,
+                    source TEXT,
                     country_of_origin TEXT,
                     region TEXT,
                     categories TEXT,
@@ -159,6 +160,9 @@ class Database:
             # Migrate existing table if needed (SQLite only)
             if self.db_type == 'sqlite':
                 self._migrate_products_table(cursor)
+            else:
+                cursor.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS source TEXT")
+                self._backfill_product_sources(cursor)
 
             # Price history table
             cursor.execute(f"""
@@ -240,6 +244,7 @@ class Database:
             'container_type': 'TEXT',
             'brand': 'TEXT',
             'supplier': 'TEXT',
+            'source': 'TEXT',
             'country_of_origin': 'TEXT',
             'region': 'TEXT',
             'categories': 'TEXT',
@@ -256,6 +261,20 @@ class Database:
                 except Exception as e:
                     logging.warning(f"Could not add column {column_name}: {e}")
 
+        self._backfill_product_sources(cursor)
+
+    @staticmethod
+    def _backfill_product_sources(cursor):
+        cursor.execute("""
+            UPDATE products
+            SET source = CASE
+                WHEN supplier = 'NKS Distributors' THEN 'NKS Distributors'
+                WHEN supplier = 'Standard Distributing Company' THEN 'Standard Distributing Company'
+                ELSE 'Breakthru Beverage'
+            END
+            WHERE source IS NULL OR source = ''
+        """)
+
     def insert_product(self, name: str, url: Optional[str] = None, **kwargs) -> int:
         """
         Insert a product or return existing product ID, update if exists.
@@ -265,7 +284,7 @@ class Database:
             url: Product URL (optional)
             **kwargs: Additional product fields (product_id, bottle_upc, case_upc, size,
                      qty_per_case, proof_abv, container_type, brand, supplier,
-                     country_of_origin, region, categories, deal_summary, product_details)
+                     source, country_of_origin, region, categories, deal_summary, product_details)
 
         Returns:
             Product ID
@@ -281,7 +300,7 @@ class Database:
             # Add additional fields from kwargs
             valid_columns = {
                 'product_id', 'bottle_upc', 'case_upc', 'size', 'qty_per_case',
-                'proof_abv', 'container_type', 'brand', 'supplier',
+                'proof_abv', 'container_type', 'brand', 'supplier', 'source',
                 'country_of_origin', 'region', 'categories', 'deal_summary', 'product_details'
             }
 
@@ -473,6 +492,7 @@ class Database:
                     p.container_type,
                     p.brand,
                     p.supplier,
+                    p.source,
                     p.country_of_origin,
                     p.region,
                     p.categories,
@@ -640,6 +660,14 @@ class Database:
                 ORDER BY count DESC
             """)
             stats['by_spirit_type'] = [dict(row) for row in cursor.fetchall()]
+
+            cursor.execute("""
+                SELECT COALESCE(source, 'Unknown') as source, COUNT(*) as count
+                FROM products
+                GROUP BY source
+                ORDER BY count DESC
+            """)
+            stats['by_source'] = [dict(row) for row in cursor.fetchall()]
 
             # Average deals per product
             if stats['total_products'] > 0:

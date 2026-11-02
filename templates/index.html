@@ -15,7 +15,7 @@
 <!-- Compact Results Summary Bar -->
 <div class="results-summary-bar">
     <div class="results-count">
-        {% if search_query or category_filter or brand_filter or deal_filter %}
+        {% if search_query or category_filter or brand_filter or deal_filter or source_filter %}
             <strong>{{ filtered_stats.total_products }}</strong> of <strong>{{ stats.total_products if stats else '0' }}</strong> products
         {% else %}
             <strong>{{ filtered_stats.total_products }}</strong> total products
@@ -88,29 +88,42 @@
                 </select>
             </div>
 
+            <div class="filter-group">
+                <label>Distributor</label>
+                <select name="source">
+                    <option value="">All Distributors</option>
+                    {% for source in sources %}
+                    <option value="{{ source }}" {% if source_filter == source %}selected{% endif %}>{{ source }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
             <div class="filter-actions">
                 <button type="submit" class="btn btn-primary">Apply Filters</button>
-                {% if search_query or category_filter or brand_filter or deal_filter %}
+                {% if search_query or category_filter or brand_filter or deal_filter or source_filter %}
                 <a href="/" class="btn btn-secondary">Reset</a>
                 {% endif %}
             </div>
         </div>
 
         <!-- Active Filters Tags -->
-        {% if search_query or category_filter or brand_filter or deal_filter %}
+        {% if search_query or category_filter or brand_filter or deal_filter or source_filter %}
         <div class="active-filters">
             <span class="active-filters-label">Active filters:</span>
             {% if search_query %}
-            <span class="filter-tag">Search: "{{ search_query }}" <a href="?category={{ category_filter }}&brand={{ brand_filter }}&deals={{ deal_filter }}">×</a></span>
+            <span class="filter-tag">Search: "{{ search_query }}" <a href="?category={{ category_filter }}&brand={{ brand_filter }}&deals={{ deal_filter }}&source={{ source_filter }}">×</a></span>
             {% endif %}
             {% if category_filter %}
-            <span class="filter-tag">Category: {{ category_filter }} <a href="?search={{ search_query }}&brand={{ brand_filter }}&deals={{ deal_filter }}">×</a></span>
+            <span class="filter-tag">Category: {{ category_filter }} <a href="?search={{ search_query }}&brand={{ brand_filter }}&deals={{ deal_filter }}&source={{ source_filter }}">×</a></span>
             {% endif %}
             {% if brand_filter %}
-            <span class="filter-tag">Brand: {{ brand_filter }} <a href="?search={{ search_query }}&category={{ category_filter }}&deals={{ deal_filter }}">×</a></span>
+            <span class="filter-tag">Brand: {{ brand_filter }} <a href="?search={{ search_query }}&category={{ category_filter }}&deals={{ deal_filter }}&source={{ source_filter }}">×</a></span>
             {% endif %}
             {% if deal_filter %}
-            <span class="filter-tag">Deals: {{ 'With Deals' if deal_filter == 'yes' else 'No Deals' }} <a href="?search={{ search_query }}&category={{ category_filter }}&brand={{ brand_filter }}">×</a></span>
+            <span class="filter-tag">Deals: {{ 'With Deals' if deal_filter == 'yes' else 'No Deals' }} <a href="?search={{ search_query }}&category={{ category_filter }}&brand={{ brand_filter }}&source={{ source_filter }}">×</a></span>
+            {% endif %}
+            {% if source_filter %}
+            <span class="filter-tag">Distributor: {{ source_filter }} <a href="?search={{ search_query }}&category={{ category_filter }}&brand={{ brand_filter }}&deals={{ deal_filter }}">×</a></span>
             {% endif %}
         </div>
         {% endif %}
@@ -121,6 +134,7 @@
         <thead>
             <tr>
                 <th class="sortable" data-type="text">Product Name</th>
+                <th class="sortable" data-type="text">Distributor</th>
                 <th class="sortable" data-type="text">Brand</th>
                 <th class="sortable" data-type="text">Category</th>
                 <th class="sortable" data-type="text">Size</th>
@@ -141,6 +155,7 @@
                     {{ product.name }}
                     {% endif %}
                 </td>
+                <td>{{ product.source or 'Unknown' }}</td>
                 <td>{{ product.brand or 'N/A' }}</td>
                 <td style="font-size: 12px; max-width: 200px;">
                     {% if product.categories %}

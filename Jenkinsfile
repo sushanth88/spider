@@ -27,6 +27,7 @@ pipeline {
         // Image names
         FLASK_IMAGE = "${DOCKER_USERNAME}/spider-flask"
         SCRAPER_IMAGE = "${DOCKER_USERNAME}/spider-scraper"
+        SGPROOF_IMAGE = "${DOCKER_USERNAME}/spider-sgproof-scraper"
 
         // Version tagging
         GIT_COMMIT_SHORT = sh(
@@ -105,6 +106,21 @@ pipeline {
                                     -t ${SCRAPER_IMAGE}:${BUILD_VERSION} \
                                     -t ${SCRAPER_IMAGE}:latest \
                                     -f docker/scraper/Dockerfile \
+                                    .
+                            """
+                        }
+                    }
+                }
+
+                stage('Build SGProof Scraper') {
+                    steps {
+                        echo '🏗️  Building SGProof Scraper image...'
+                        script {
+                            sh """
+                                docker build \\
+                                    -t ${SGPROOF_IMAGE}:${BUILD_VERSION} \\
+                                    -t ${SGPROOF_IMAGE}:latest \\
+                                    -f docker/sgproof/Dockerfile \\
                                     .
                             """
                         }
@@ -190,6 +206,11 @@ pipeline {
                         docker push ${SCRAPER_IMAGE}:latest
                     """
 
+                    sh """
+                        docker push ${SGPROOF_IMAGE}:${BUILD_VERSION}
+                        docker push ${SGPROOF_IMAGE}:latest
+                    """
+
                     echo "✅ Images pushed successfully!"
                     echo "   Flask:   ${FLASK_IMAGE}:${BUILD_VERSION}"
                     echo "   Scraper: ${SCRAPER_IMAGE}:${BUILD_VERSION}"
@@ -213,8 +234,9 @@ pipeline {
                         cp docker-compose.prod.yml deploy/
 
                         # Update image tags in docker-compose
-                        sed -i.bak 's|spider-flask:latest|${FLASK_IMAGE}:${BUILD_VERSION}|g' deploy/docker-compose.prod.yml
-                        sed -i.bak 's|spider-scraper:latest|${SCRAPER_IMAGE}:${BUILD_VERSION}|g' deploy/docker-compose.prod.yml
+                        sed -i.bak 's|image: .*spider-flask:latest|image: ${FLASK_IMAGE}:${BUILD_VERSION}|g' deploy/docker-compose.prod.yml
+                        sed -i.bak 's|image: .*spider-scraper:latest|image: ${SCRAPER_IMAGE}:${BUILD_VERSION}|g' deploy/docker-compose.prod.yml
+                        sed -i.bak 's|image: .*spider-sgproof-scraper:latest|image: ${SGPROOF_IMAGE}:${BUILD_VERSION}|g' deploy/docker-compose.prod.yml
 
                         # Deploy via Portainer API (if configured)
                         # Or use SSH to NAS and docker-compose up

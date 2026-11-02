@@ -655,6 +655,7 @@ class ProductScraper:
                             product_id = self.database.insert_product(
                                 name=product['name'],
                                 url=product.get('url'),
+                                source='Breakthru Beverage',
                                 product_id=product.get('product_id'),
                                 bottle_upc=product.get('bottle_upc'),
                                 case_upc=product.get('case_upc'),

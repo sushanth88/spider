@@ -78,6 +78,71 @@ services:
       - "com.spider.service=scraper"
       - "com.spider.environment=dev"
 
+  nks-scraper:
+    build:
+      context: .
+      dockerfile: docker/scraper/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://spider:${DB_PASSWORD:-dev_password_change_me}@postgres:5432/spider_dev
+    env_file:
+      - VT_info.env
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "nks"]
+    volumes:
+      - ./run_vtinfo_scraper.py:/app/run_vtinfo_scraper.py:ro
+      - ./vtinfo_scraper.py:/app/vtinfo_scraper.py:ro
+      - ./database.py:/app/database.py:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - spider-network
+    restart: "no"
+    profiles:
+      - scraper
+
+  standard-scraper:
+    build:
+      context: .
+      dockerfile: docker/scraper/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://spider:${DB_PASSWORD:-dev_password_change_me}@postgres:5432/spider_dev
+    env_file:
+      - VT_info.env
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "standard"]
+    volumes:
+      - ./run_vtinfo_scraper.py:/app/run_vtinfo_scraper.py:ro
+      - ./vtinfo_scraper.py:/app/vtinfo_scraper.py:ro
+      - ./database.py:/app/database.py:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - spider-network
+    restart: "no"
+    profiles:
+      - scraper
+
+  sgproof-scraper:
+    build:
+      context: .
+      dockerfile: docker/sgproof/Dockerfile
+    image: spider-sgproof-scraper:dev
+    environment:
+      DATABASE_URL: postgresql://spider:${DB_PASSWORD:-dev_password_change_me}@postgres:5432/spider_dev
+      WEBSITE_USERNAME: ${SGPROOF_USERNAME}
+      WEBSITE_PASSWORD: ${SGPROOF_PASSWORD}
+      DATABASE_PATH: data/products.db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - spider-network
+    restart: "no"
+    profiles:
+      - scraper
+
 volumes:
   postgres_data_dev:
     driver: local

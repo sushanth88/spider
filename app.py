@@ -31,9 +31,10 @@ def index():
     category_filter = request.args.get('category', '')
     brand_filter = request.args.get('brand', '')
     deal_filter = request.args.get('deals', '')
+    source_filter = request.args.get('source', '')
 
-    # Get all products
-    products = db.get_all_products_with_latest_price()
+    all_products = db.get_all_products_with_latest_price()
+    products = all_products.copy()
 
     # Apply filters
     if search_query:
@@ -46,24 +47,27 @@ def index():
     if brand_filter:
         products = [p for p in products if p.get('brand') == brand_filter]
 
+    if source_filter:
+        products = [p for p in products if p.get('source') == source_filter]
+
     if deal_filter == 'yes':
         products = [p for p in products if p.get('deal_count', 0) > 0]
     elif deal_filter == 'no':
         products = [p for p in products if p.get('deal_count', 0) == 0]
 
-    # Get statistics for all products (for filter dropdowns)
-    all_products = db.get_all_products_with_latest_price()
     stats = db.get_statistics()
 
     # Get unique categories and brands for filters
     categories = set()
     brands = set()
+    sources = set()
     for p in all_products:
         if p.get('categories'):
             for cat in p['categories'].split(', '):
                 categories.add(cat.strip())
         if p.get('brand'):
             brands.add(p['brand'])
+        sources.add(p.get('source') or 'Unknown')
 
     # Calculate statistics for filtered results
     filtered_stats = {
@@ -104,10 +108,12 @@ def index():
         filtered_stats=filtered_stats,
         categories=sorted(categories),
         brands=sorted(brands),
+        sources=sorted(sources),
         search_query=search_query,
         category_filter=category_filter,
         brand_filter=brand_filter,
-        deal_filter=deal_filter
+        deal_filter=deal_filter,
+        source_filter=source_filter
     )
 
 

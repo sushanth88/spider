@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS products (
     container_type TEXT,
     brand TEXT,
     supplier TEXT,
+    source TEXT,
     country_of_origin TEXT,
     region TEXT,
     categories TEXT,

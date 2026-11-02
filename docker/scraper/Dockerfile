@@ -78,6 +78,8 @@ RUN playwright install chromium
 # Copy scraper files
 COPY --chown=scraper:scraper run_scraper.py .
 COPY --chown=scraper:scraper scraper.py .
+COPY --chown=scraper:scraper run_vtinfo_scraper.py .
+COPY --chown=scraper:scraper vtinfo_scraper.py .
 COPY --chown=scraper:scraper database.py .
 
 # Create directory for screenshots

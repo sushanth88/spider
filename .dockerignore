@@ -33,8 +33,10 @@ screenshots/
 
 # Environment
 .env
+VT_info.env
 .env.local
 .env.*.local
+.venv/
 
 # Docker
 Dockerfile

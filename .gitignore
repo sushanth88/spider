@@ -26,6 +26,8 @@ wheels/
 # Environment
 .env
 .env.prod
+.env.*
+VT_info.env
 .venv
 
 # Database

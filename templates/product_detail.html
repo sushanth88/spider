@@ -20,6 +20,13 @@
     </div>
 
     <div class="product-info">
+        {% if product.source %}
+        <div class="info-item">
+            <label>Distributor</label>
+            <div class="value">{{ product.source }}</div>
+        </div>
+        {% endif %}
+
         {% if product.product_id %}
         <div class="info-item">
             <label>Product ID</label>
@@ -34,7 +41,7 @@
         </div>
         {% endif %}
 
-        {% if product.supplier %}
+        {% if product.supplier and product.supplier != product.source %}
         <div class="info-item">
             <label>Supplier</label>
             <div class="value">{{ product.supplier }}</div>

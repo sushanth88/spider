@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt && \
 # Copy application files
 COPY app.py .
 COPY database.py .
+COPY migrate_sqlite_to_postgres.py .
 COPY templates/ templates/
 COPY static/ static/
 

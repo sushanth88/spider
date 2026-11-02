@@ -1,36 +1,30 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: spider-postgres
     environment:
-      - POSTGRES_DB=spider
-      - POSTGRES_USER=spider
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      POSTGRES_DB: spider_dev
+      POSTGRES_USER: spider
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Portainer}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spider"]
+      test: ["CMD-SHELL", "pg_isready -U spider -d spider_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - spider-network
 
   web:
-    image: raghav0401/spider-app:latest
+    image: raghav0401/spider-flask:latest
     container_name: spider-web
     ports:
       - "5000:5000"
-    volumes:
-      - spider-data:/app/data
     environment:
-      - WEBSITE_USERNAME=${WEBSITE_USERNAME}
-      - WEBSITE_PASSWORD=${WEBSITE_PASSWORD}
-      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider
-      - FLASK_HOST=0.0.0.0
-      - FLASK_PORT=5000
-      - FLASK_DEBUG=False
+      DATABASE_URL: postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider_dev
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: 5000
+      FLASK_DEBUG: "False"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -41,33 +35,71 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - spider-network
 
-  scraper:
-    image: raghav0401/spider-app:latest
-    container_name: spider-scraper
-    volumes:
-      - spider-data:/app/data
+  breakthru-scraper:
+    image: raghav0401/spider-scraper:latest
+    container_name: breakthru-scraper
     environment:
-      - WEBSITE_USERNAME=${WEBSITE_USERNAME}
-      - WEBSITE_PASSWORD=${WEBSITE_PASSWORD}
-      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider
+      WEBSITE_USERNAME: ${WEBSITE_USERNAME}
+      WEBSITE_PASSWORD: ${WEBSITE_PASSWORD}
+      DATABASE_URL: postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider_dev
+    command: ["python", "run_scraper.py"]
     restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
     profiles:
-      - scraper
-    networks:
-      - spider-network
+      - scrapers
+
+  nks-scraper:
+    image: raghav0401/spider-scraper:latest
+    container_name: spider-nks-scraper
+    environment:
+      VTINFO_USERNAME: ${VTINFO_USERNAME}
+      VTINFO_PASSWORD: ${VTINFO_PASSWORD}
+      VTINFO_RETAILER_ID: ${VTINFO_RETAILER_ID:-15786}
+      DATABASE_URL: postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider_dev
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "nks"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scrapers
+
+  standard-scraper:
+    image: raghav0401/spider-scraper:latest
+    container_name: spider-standard-scraper
+    environment:
+      VTINFO_USERNAME: ${VTINFO_USERNAME}
+      VTINFO_PASSWORD: ${VTINFO_PASSWORD}
+      VTINFO_RETAILER_ID: ${VTINFO_RETAILER_ID:-15786}
+      DATABASE_URL: postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider_dev
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "standard"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scrapers
+
+  sgproof-scraper:
+    image: raghav0401/spider-sgproof-scraper:latest
+    container_name: sgproof-scraper
+    environment:
+      WEBSITE_USERNAME: ${SGPROOF_USERNAME}
+      WEBSITE_PASSWORD: ${SGPROOF_PASSWORD}
+      DATABASE_URL: postgresql://spider:${POSTGRES_PASSWORD}@postgres:5432/spider_dev
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scrapers
 
 volumes:
-  spider-data:
-    driver: local
   postgres-data:
-    driver: local
-
-networks:
-  spider-network:
-    driver: bridge
+    external: true
+    name: spider_spider-postgres-data

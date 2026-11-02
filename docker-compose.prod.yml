@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     container_name: spider-postgres
     environment:
-      - POSTGRES_DB=spider
+      - POSTGRES_DB=spider_dev
       - POSTGRES_USER=spider
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
     volumes:
@@ -20,7 +20,7 @@ services:
       - "5432:5432"
 
   web:
-    image: raghav0401/spider-app:latest
+    image: raghav0401/spider-flask:latest
     container_name: spider-web
     ports:
       - "5000:5000"
@@ -33,7 +33,7 @@ services:
       - FLASK_HOST=0.0.0.0
       - FLASK_PORT=5000
       - FLASK_DEBUG=False
-      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider
+      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider_dev
     command: python app.py
     restart: unless-stopped
     depends_on:
@@ -47,7 +47,7 @@ services:
       start_period: 40s
 
   scraper:
-    image: raghav0401/spider-app:latest
+    image: raghav0401/spider-scraper:latest
     container_name: spider-scraper
     volumes:
       # Share data directory with web service
@@ -55,8 +55,59 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider
+      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider_dev
     command: python run_scraper.py
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scraper
+
+  nks-scraper:
+    image: raghav0401/spider-scraper:latest
+    volumes:
+      - spider-data:/app/data
+    environment:
+      - VTINFO_USERNAME=${VTINFO_USERNAME}
+      - VTINFO_PASSWORD=${VTINFO_PASSWORD}
+      - VTINFO_RETAILER_ID=${VTINFO_RETAILER_ID:-15786}
+      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider_dev
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "nks"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scraper
+
+  standard-scraper:
+    image: raghav0401/spider-scraper:latest
+    volumes:
+      - spider-data:/app/data
+    environment:
+      - VTINFO_USERNAME=${VTINFO_USERNAME}
+      - VTINFO_PASSWORD=${VTINFO_PASSWORD}
+      - VTINFO_RETAILER_ID=${VTINFO_RETAILER_ID:-15786}
+      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider_dev
+    entrypoint: ["python", "run_vtinfo_scraper.py"]
+    command: ["--vendor", "standard"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - scraper
+
+  sgproof-scraper:
+    image: raghav0401/spider-sgproof-scraper:latest
+    volumes:
+      - spider-data:/app/data
+    environment:
+      - WEBSITE_USERNAME=${SGPROOF_USERNAME}
+      - WEBSITE_PASSWORD=${SGPROOF_PASSWORD}
+      - DATABASE_URL=postgresql://spider:${POSTGRES_PASSWORD:-changeme}@postgres:5432/spider_dev
     restart: "no"
     depends_on:
       postgres:
